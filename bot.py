@@ -40,14 +40,14 @@ os.makedirs(os.path.dirname(DB_PATH) if os.path.dirname(DB_PATH) else 'data', ex
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
 COOLDOWNS = {
-    "global": int(os.getenv('CD_GLOBAL', '2')),
+    "global": int(os.getenv('CD_GLOBAL', '0')),
     "top": int(os.getenv('CD_TOP', '5')),
     "stats": int(os.getenv('CD_STATS', '8')),
     "rules": int(os.getenv('CD_RULES', '10')),
     "help": int(os.getenv('CD_HELP', '10')),
     "start": int(os.getenv('CD_START', '15')),
     "callback": int(os.getenv('CD_CALLBACK', '3')),
-    "any_message": int(os.getenv('CD_ANY_MESSAGE', '1')),
+    "any_message": int(os.getenv('CD_ANY_MESSAGE', '0')),
     "moderation": int(os.getenv('CD_MODERATION', '3')),
     "games": int(os.getenv('CD_GAMES', '5')),
     "future": int(os.getenv('CD_FUTURE', '10')),
