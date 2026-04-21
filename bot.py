@@ -27,10 +27,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ================== КОНФИГУРАЦИЯ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ==================
+# ================== КОНФИГУРАЦИЯ ==================
 TOKEN = os.getenv('BOT_TOKEN', '')
 if not TOKEN:
-    raise ValueError("BOT_TOKEN не найден в переменных окружения!")
+    raise ValueError("BOT_TOKEN не найден!")
 
 ALLOWED_BOT_SENDERS = [int(x.strip()) for x in os.getenv('ALLOWED_BOT_SENDERS', '6842501686,7588258720').split(',')]
 DB_PATH = os.getenv('DB_PATH', 'data/bot_data.db')
@@ -39,7 +39,6 @@ BACKUP_DIR = os.getenv('BACKUP_DIR', 'data/backups')
 os.makedirs(os.path.dirname(DB_PATH) if os.path.dirname(DB_PATH) else 'data', exist_ok=True)
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
-# Настройки Cooldown
 COOLDOWNS = {
     "global": int(os.getenv('CD_GLOBAL', '2')),
     "top": int(os.getenv('CD_TOP', '5')),
@@ -63,32 +62,30 @@ KICK_SETTINGS = {
     "require_confirmation": os.getenv('KICK_REQUIRE_CONFIRMATION', 'True').lower() == 'true',
 }
 
-# Запрещенные слова
 BANNED_WORDS = {
     "игил", "isis", "isil", "даиш", "хамас", "hamas", "хамасс",
     "аль-каида", "алькаида", "аль каида", "alqaeda", "al-qaeda", "al qaeda",
     "талибан", "taliban", "талиб",
 }
 
-# Предсказания
 FUTURE_PREDICTIONS = [
-    "🌟 Сегодня вас ждет неожиданная встреча, которая изменит ваше настроение к лучшему.",
-    "💰 Финансовая удача улыбнется вам - ожидайте небольшой, но приятный денежный сюрприз.",
-    "💕 В личной жизни наступит гармония и взаимопонимание с близкими.",
-    "🎯 Все начатые дела сегодня будут особенно успешными - дерзайте!",
-    "🌙 Вечер принесет спокойствие и приятные мысли о будущем.",
-    "📚 Полученные сегодня знания окажутся очень полезными в ближайшее время.",
-    "🤝 Старые друзья напомнят о себе - не игнорируйте их сообщения.",
-    "🎮 Удача в играх будет на вашей стороне, но знайте меру.",
-    "💪 Энергия будет бить ключом - используйте ее для важных дел.",
-    "🌈 Неожиданное событие раскрасит серые будни яркими красками.",
+    "🌟 Сегодня вас ждет неожиданная встреча!",
+    "💰 Финансовая удача улыбнется вам!",
+    "💕 В личной жизни наступит гармония!",
+    "🎯 Все начатые дела будут успешными!",
+    "🌙 Вечер принесет спокойствие!",
+    "📚 Полученные знания окажутся полезными!",
+    "🤝 Старые друзья напомнят о себе!",
+    "🎮 Удача в играх будет на вашей стороне!",
+    "💪 Энергия будет бить ключом!",
+    "🌈 Неожиданное событие раскрасит будни!",
 ]
 
 DEFAULT_RULES = """
 📋 <b>Правила чата</b>
 
 1. Запрещен спам.
-2. Запрещены Любые матерные оскорбления.
+2. Запрещены матерные оскорбления.
 3. Запрещено унижение администрации.
 4. Запрещены политика, религия, 18+
 5. Запрещена реклама.
@@ -106,7 +103,7 @@ processed_messages_lock = asyncio.Lock()
 user_cooldowns = defaultdict(dict)
 active_duels = {}
 
-# ================== КЛАСС БАЗЫ ДАННЫХ ==================
+# ================== БАЗА ДАННЫХ ==================
 
 class Database:
     def __init__(self, db_path: str):
@@ -120,7 +117,6 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Глобальная статистика
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS global_stats (
                 chat_id TEXT, user_id TEXT, name TEXT,
@@ -129,7 +125,6 @@ class Database:
             )
         ''')
         
-        # Дневная статистика
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS daily_stats (
                 chat_id TEXT, date TEXT, user_id TEXT,
@@ -138,7 +133,6 @@ class Database:
             )
         ''')
         
-        # Предупреждения
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS warnings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -147,7 +141,6 @@ class Database:
             )
         ''')
         
-        # Нарушители
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS violators (
                 chat_id TEXT, user_id TEXT,
@@ -156,14 +149,12 @@ class Database:
             )
         ''')
         
-        # Правила
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS rules (
                 chat_id TEXT PRIMARY KEY, rules_text TEXT
             )
         ''')
         
-        # Достижения пользователей
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_achievements (
                 chat_id TEXT, user_id TEXT, ach_id TEXT,
@@ -173,21 +164,18 @@ class Database:
             )
         ''')
         
-        # Кастомные достижения
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS custom_achievements (
                 ach_id TEXT PRIMARY KEY, name TEXT, description TEXT, icon TEXT
             )
         ''')
         
-        # Статистика дуэлей
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS duel_stats (
                 user_id TEXT PRIMARY KEY, wins INTEGER DEFAULT 0, losses INTEGER DEFAULT 0
             )
         ''')
         
-        # События входа
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS join_events (
                 chat_id TEXT, user_id TEXT, timestamp REAL, name TEXT,
@@ -199,32 +187,29 @@ class Database:
         conn.close()
         logger.info("База данных инициализирована")
     
-    # ================== СТАТИСТИКА ==================
-    def get_global_stats(self, chat_id: str, user_id: str) -> Optional[Dict]:
+    def update_global_stats(self, chat_id: str, user_id: str, name: str):
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM global_stats WHERE chat_id = ? AND user_id = ?', (chat_id, user_id))
         row = cursor.fetchone()
-        conn.close()
+        
         if row:
-            return {"name": row[2], "messages": row[3], "first_seen": row[4]}
-        return None
-    
-    def update_global_stats(self, chat_id: str, user_id: str, name: str):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        existing = self.get_global_stats(chat_id, user_id)
-        if existing:
             cursor.execute('UPDATE global_stats SET messages = messages + 1, name = ? WHERE chat_id = ? AND user_id = ?', (name, chat_id, user_id))
         else:
             cursor.execute('INSERT INTO global_stats (chat_id, user_id, name, messages, first_seen) VALUES (?, ?, ?, 1, ?)', (chat_id, user_id, name, datetime.now().isoformat()))
+        
         conn.commit()
         conn.close()
     
     def update_daily_stats(self, chat_id: str, user_id: str, name: str, date_str: str):
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO daily_stats (chat_id, date, user_id, name, messages) VALUES (?, ?, ?, ?, 1) ON CONFLICT(chat_id, date, user_id) DO UPDATE SET messages = messages + 1, name = excluded.name', (chat_id, date_str, user_id, name))
+        cursor.execute('''
+            INSERT INTO daily_stats (chat_id, date, user_id, name, messages)
+            VALUES (?, ?, ?, ?, 1)
+            ON CONFLICT(chat_id, date, user_id) DO UPDATE SET
+                messages = messages + 1, name = excluded.name
+        ''', (chat_id, date_str, user_id, name))
         conn.commit()
         conn.close()
     
@@ -264,6 +249,7 @@ class Database:
     def get_top_users(self, chat_id: str, period: str = "global", limit: int = 10) -> List[Tuple[str, int]]:
         conn = self.get_connection()
         cursor = conn.cursor()
+        
         if period == "global":
             cursor.execute('SELECT name, messages FROM global_stats WHERE chat_id = ? ORDER BY messages DESC LIMIT ?', (chat_id, limit))
         elif period == "today":
@@ -274,6 +260,7 @@ class Database:
         else:
             conn.close()
             return []
+        
         results = [(row[0], row[1]) for row in cursor.fetchall()]
         conn.close()
         return results
@@ -301,9 +288,9 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT SUM(messages) FROM global_stats WHERE chat_id = ?', (chat_id,))
-        total = cursor.fetchone()[0]
+        row = cursor.fetchone()
         conn.close()
-        return total or 0
+        return row[0] if row and row[0] else 0
     
     def get_most_active_user(self, chat_id: str) -> Optional[Tuple[str, int]]:
         conn = self.get_connection()
@@ -313,7 +300,6 @@ class Database:
         conn.close()
         return (row[0], row[1]) if row else None
     
-    # ================== ПРЕДУПРЕЖДЕНИЯ ==================
     def add_warning(self, chat_id: str, user_id: str, admin_id: int, reason: str):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -336,11 +322,17 @@ class Database:
         conn.commit()
         conn.close()
     
-    # ================== НАРУШИТЕЛИ ==================
     def update_violator(self, chat_id: str, user_id: str, name: str):
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO violators (chat_id, user_id, violations, last_violation, name) VALUES (?, ?, 1, ?, ?) ON CONFLICT(chat_id, user_id) DO UPDATE SET violations = violations + 1, last_violation = excluded.last_violation, name = excluded.name', (chat_id, user_id, datetime.now().timestamp(), name))
+        cursor.execute('SELECT violations FROM violators WHERE chat_id = ? AND user_id = ?', (chat_id, user_id))
+        row = cursor.fetchone()
+        
+        if row:
+            cursor.execute('UPDATE violators SET violations = violations + 1, last_violation = ?, name = ? WHERE chat_id = ? AND user_id = ?', (datetime.now().timestamp(), name, chat_id, user_id))
+        else:
+            cursor.execute('INSERT INTO violators (chat_id, user_id, violations, last_violation, name) VALUES (?, ?, 1, ?, ?)', (chat_id, user_id, datetime.now().timestamp(), name))
+        
         conn.commit()
         conn.close()
     
@@ -352,7 +344,6 @@ class Database:
         conn.close()
         return row[0] if row else 0
     
-    # ================== ПРАВИЛА ==================
     def get_rules(self, chat_id: str) -> str:
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -368,13 +359,18 @@ class Database:
         conn.commit()
         conn.close()
     
-    # ================== ДОСТИЖЕНИЯ ==================
     def grant_achievement(self, chat_id: str, user_id: str, ach_id: str, ach_name: str, ach_description: str, ach_icon: str, ach_type: str, granted_by: int):
         conn = self.get_connection()
         cursor = conn.cursor()
+        cursor.execute('SELECT 1 FROM user_achievements WHERE chat_id = ? AND user_id = ? AND ach_id = ?', (chat_id, user_id, ach_id))
+        if cursor.fetchone():
+            conn.close()
+            return False
+        
         cursor.execute('INSERT INTO user_achievements (chat_id, user_id, ach_id, ach_name, ach_description, ach_icon, ach_type, granted_at, granted_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', (chat_id, user_id, ach_id, ach_name, ach_description, ach_icon, ach_type, datetime.now().isoformat(), granted_by))
         conn.commit()
         conn.close()
+        return True
     
     def has_achievement(self, chat_id: str, user_id: str, ach_id: str) -> bool:
         conn = self.get_connection()
@@ -399,7 +395,6 @@ class Database:
         conn.commit()
         conn.close()
     
-    # ================== КАСТОМНЫЕ ДОСТИЖЕНИЯ ==================
     def add_custom_achievement(self, ach_id: str, name: str, description: str, icon: str):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -422,7 +417,6 @@ class Database:
         conn.commit()
         conn.close()
     
-    # ================== ДУЭЛИ ==================
     def update_duel_stats(self, user_id: str, is_winner: bool):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -441,7 +435,6 @@ class Database:
         conn.close()
         return {"wins": row[0] if row else 0, "losses": row[1] if row else 0}
     
-    # ================== СОБЫТИЯ ВХОДА ==================
     def save_join_event(self, chat_id: str, user_id: str, name: str, timestamp: float):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -520,8 +513,7 @@ class AchievementSystem:
         if db.has_achievement(str(chat_id), str(user_id), ach_id):
             return False
         ach = all_achs[ach_id]
-        db.grant_achievement(str(chat_id), str(user_id), ach_id, ach["name"], ach["description"], ach["icon"], ach["type"], granted_by)
-        return True
+        return db.grant_achievement(str(chat_id), str(user_id), ach_id, ach["name"], ach["description"], ach["icon"], ach["type"], granted_by)
     
     def revoke_achievement(self, chat_id: int, user_id: int, ach_id: str) -> bool:
         db.revoke_achievement(str(chat_id), str(user_id), ach_id)
@@ -553,24 +545,33 @@ class AchievementSystem:
         granted = []
         user_achs = [a["id"] for a in self.get_user_achievements(chat_id, user_id)]
         messages = profile["messages_total"]
-        if messages >= 1 and "first_message" not in user_achs and self.grant_achievement(chat_id, user_id, "first_message", 0):
-            granted.append("first_message")
-        if messages >= 5000 and "5000_messages" not in user_achs and self.grant_achievement(chat_id, user_id, "5000_messages", 0):
-            granted.append("5000_messages")
-        if messages >= 25000 and "25000_messages" not in user_achs and self.grant_achievement(chat_id, user_id, "25000_messages", 0):
-            granted.append("25000_messages")
-        if messages >= 50000 and "50000_messages" not in user_achs and self.grant_achievement(chat_id, user_id, "50000_messages", 0):
-            granted.append("50000_messages")
+        
+        if messages >= 1 and "first_message" not in user_achs:
+            if self.grant_achievement(chat_id, user_id, "first_message", 0):
+                granted.append("first_message")
+        if messages >= 5000 and "5000_messages" not in user_achs:
+            if self.grant_achievement(chat_id, user_id, "5000_messages", 0):
+                granted.append("5000_messages")
+        if messages >= 25000 and "25000_messages" not in user_achs:
+            if self.grant_achievement(chat_id, user_id, "25000_messages", 0):
+                granted.append("25000_messages")
+        if messages >= 50000 and "50000_messages" not in user_achs:
+            if self.grant_achievement(chat_id, user_id, "50000_messages", 0):
+                granted.append("50000_messages")
+        
         if profile.get("first_seen"):
             try:
                 first_date = datetime.fromisoformat(profile["first_seen"])
                 days = (datetime.now() - first_date).days
-                if days >= 7 and "first_week" not in user_achs and self.grant_achievement(chat_id, user_id, "first_week", 0):
-                    granted.append("first_week")
-                if days >= 30 and "first_month" not in user_achs and self.grant_achievement(chat_id, user_id, "first_month", 0):
-                    granted.append("first_month")
-                if days >= 365 and "veteran" not in user_achs and self.grant_achievement(chat_id, user_id, "veteran", 0):
-                    granted.append("veteran")
+                if days >= 7 and "first_week" not in user_achs:
+                    if self.grant_achievement(chat_id, user_id, "first_week", 0):
+                        granted.append("first_week")
+                if days >= 30 and "first_month" not in user_achs:
+                    if self.grant_achievement(chat_id, user_id, "first_month", 0):
+                        granted.append("first_month")
+                if days >= 365 and "veteran" not in user_achs:
+                    if self.grant_achievement(chat_id, user_id, "veteran", 0):
+                        granted.append("veteran")
             except:
                 pass
         return granted
@@ -705,13 +706,17 @@ async def clear_user_warnings(chat_id: int, user_id: int):
     db.clear_warnings(str(chat_id), str(user_id))
 
 def get_user_profile(chat_id: int, user_id: int, user_name: str) -> Dict:
-    chat_id_str, user_id_str = str(chat_id), str(user_id)
+    chat_id_str = str(chat_id)
+    user_id_str = str(user_id)
+    
     return {
-        "user_id": user_id, "name": user_name,
+        "user_id": user_id,
+        "name": user_name,
         "first_seen": db.get_user_first_seen(chat_id_str, user_id_str),
         "messages_total": db.get_user_messages_total(chat_id_str, user_id_str),
         "messages_today": db.get_user_messages_today(chat_id_str, user_id_str, str(date.today())),
         "messages_week": db.get_user_messages_week(chat_id_str, user_id_str),
+        "messages_month": db.get_user_messages_week(chat_id_str, user_id_str),
         "warnings": len(db.get_warnings(chat_id_str, user_id_str)),
         "violations": db.get_violations_count(chat_id_str, user_id_str),
         "top_position": db.get_user_top_position(chat_id_str, user_name),
@@ -719,25 +724,56 @@ def get_user_profile(chat_id: int, user_id: int, user_name: str) -> Dict:
 
 def format_profile(profile: Dict, chat_title: str, achievements: List[Dict] = None) -> str:
     messages = profile["messages_total"]
-    if messages < 1000: rank = "🐣 Новенький"
-    elif messages < 5000: rank = "🌱 Активный"
-    elif messages < 10000: rank = "⭐ Постоянный"
-    elif messages < 25000: rank = "🌟 Ветеран"
-    elif messages < 50000: rank = "👑 Легенда"
-    else: rank = "🤴 Бог чата"
+    if messages < 1000:
+        rank = "🐣 Новенький"
+    elif messages < 5000:
+        rank = "🌱 Активный"
+    elif messages < 10000:
+        rank = "⭐ Постоянный"
+    elif messages < 25000:
+        rank = "🌟 Ветеран"
+    elif messages < 50000:
+        rank = "👑 Легенда"
+    else:
+        rank = "🤴 Бог чата"
     
-    first_seen = datetime.fromisoformat(profile["first_seen"]).strftime("%d.%m.%Y") if profile["first_seen"] else "Неизвестно"
+    first_seen = "Неизвестно"
+    if profile["first_seen"]:
+        try:
+            first_date = datetime.fromisoformat(profile["first_seen"])
+            first_seen = first_date.strftime("%d.%m.%Y")
+        except:
+            pass
+    
     warnings = profile["warnings"]
-    if warnings == 0: warn_status = "✅ Примерный"
-    elif warnings < 3: warn_status = "⚠️ На заметке"
-    elif warnings < 5: warn_status = "🚫 Проблемный"
-    else: warn_status = "⛔ В бане"
+    if warnings == 0:
+        warn_status = "✅ Примерный"
+    elif warnings < 3:
+        warn_status = "⚠️ На заметке"
+    elif warnings < 5:
+        warn_status = "🚫 Проблемный"
+    else:
+        warn_status = "⛔ В бане"
     
-    text = f"👤 Профиль\n\n• Имя: {profile['name']}\n• ID: {profile['user_id']}\n• Ранг: {rank}\n• Статус: {warn_status}\n• В чате с: {first_seen}\n\nСтатистика в {chat_title}:\n• Всего: {profile['messages_total']}\n• Сегодня: {profile['messages_today']}\n• Неделя: {profile['messages_week']}\n\nНарушения:\n• Предупреждений: {profile['warnings']}\n• Нарушений: {profile['violations']}\n"
+    text = (f"👤 Профиль пользователя\n\n"
+            f"• Имя: {profile['name']}\n"
+            f"• ID: {profile['user_id']}\n"
+            f"• Ранг: {rank}\n"
+            f"• Статус: {warn_status}\n"
+            f"• В чате с: {first_seen}\n\n"
+            f"Статистика в {chat_title}:\n"
+            f"• Всего: {profile['messages_total']}\n"
+            f"• Сегодня: {profile['messages_today']}\n"
+            f"• Неделя: {profile['messages_week']}\n\n"
+            f"Нарушения:\n"
+            f"• Предупреждений: {profile['warnings']}\n"
+            f"• Нарушений: {profile['violations']}\n")
+    
     if profile["top_position"]:
         text += f"• Место в топе: {profile['top_position']}\n"
     if achievements:
         text += f"\nДостижения:\n{achievement_system.format_achievements(achievements)}"
+    
     return text
 
 def update_user_stats(chat_id: int, user_id: int, user_name: str):
@@ -745,6 +781,7 @@ def update_user_stats(chat_id: int, user_id: int, user_name: str):
         user_name = user_name.replace('<', '&lt;').replace('>', '&gt;')
         db.update_global_stats(str(chat_id), str(user_id), user_name)
         db.update_daily_stats(str(chat_id), str(user_id), user_name, str(date.today()))
+        
         profile = get_user_profile(chat_id, user_id, user_name)
         granted = achievement_system.check_auto_achievements(chat_id, user_id, profile)
         if granted:
@@ -778,6 +815,12 @@ def get_help_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="👤 Профиль", callback_data="my_profile"), InlineKeyboardButton(text="🏅 Достижения", callback_data="my_achievements")],
         [InlineKeyboardButton(text="📊 К статистике", callback_data="back_to_stats")]
     ])
+
+async def save_join_event(chat_id: int, user_id: int, user_name: str = None):
+    db.save_join_event(str(chat_id), str(user_id), user_name or "Неизвестный", datetime.now().timestamp())
+
+async def get_recent_joiners(chat_id: int, hours: float = 1) -> List[Tuple[int, str, datetime]]:
+    return db.get_recent_joiners(str(chat_id), hours)
 
 # ================== КОМАНДА ДУЭЛИ ==================
 
@@ -1240,7 +1283,11 @@ async def cmd_unmute(message: Message, command: CommandObject):
         await message.reply("❌ /unmute @user")
         return
     
-    user_id = message.reply_to_message.from_user.id if message.reply_to_message else (await find_user_by_identifier(message, args[0]))[0]
+    if message.reply_to_message:
+        user_id = message.reply_to_message.from_user.id
+    else:
+        user_id, _, _ = await find_user_by_identifier(message, args[0])
+    
     if not user_id:
         await message.reply("❌ Пользователь не найден")
         return
@@ -1319,9 +1366,16 @@ async def cmd_warns(message: Message, command: CommandObject):
         await message.reply("❌ Нет прав")
         return
     
-    user_id = message.reply_to_message.from_user.id if message.reply_to_message else (await find_user_by_identifier(message, command.args))[0] if command.args else None
-    if not user_id:
+    if message.reply_to_message:
+        user_id = message.reply_to_message.from_user.id
+    elif command.args:
+        user_id, _, _ = await find_user_by_identifier(message, command.args)
+    else:
         await message.reply("❌ Укажите пользователя")
+        return
+    
+    if not user_id:
+        await message.reply("❌ Пользователь не найден")
         return
     
     warnings = db.get_warnings(str(message.chat.id), str(user_id))
@@ -1345,9 +1399,16 @@ async def cmd_clearwarns(message: Message, command: CommandObject):
         await message.reply("❌ Нет прав")
         return
     
-    user_id = message.reply_to_message.from_user.id if message.reply_to_message else (await find_user_by_identifier(message, command.args))[0] if command.args else None
-    if not user_id:
+    if message.reply_to_message:
+        user_id = message.reply_to_message.from_user.id
+    elif command.args:
+        user_id, _, _ = await find_user_by_identifier(message, command.args)
+    else:
         await message.reply("❌ Укажите пользователя")
+        return
+    
+    if not user_id:
+        await message.reply("❌ Пользователь не найден")
         return
     
     await clear_user_warnings(message.chat.id, user_id)
@@ -1441,6 +1502,15 @@ async def cmd_list_new(message: Message, command: CommandObject):
         text += f"• {name} (ID: {user_id}) - {join_date.strftime('%d.%m.%Y %H:%M')}\n"
     await message.reply(text)
 
+@dp.message(Command("kicknew_clear"))
+async def cmd_clear_join_events(message: Message):
+    if not await check_admin_permissions(message):
+        await message.reply("❌ Нет прав")
+        return
+    
+    db.clear_old_join_events(0)
+    await message.reply("✅ История событий входа очищена")
+
 # ================== ИГРОВЫЕ КОМАНДЫ ==================
 
 @dp.message(Command("додеп"))
@@ -1480,6 +1550,33 @@ async def cmd_announce(message: Message, command: CommandObject):
     if command.args:
         await message.answer(f"📢 {command.args}", parse_mode=ParseMode.HTML)
         await message.delete()
+
+@dp.message(Command("broadcast"))
+async def cmd_broadcast(message: Message, command: CommandObject):
+    if not is_allowed_bot_sender(message.from_user.id):
+        await message.reply("❌ Нет прав")
+        return
+    
+    if not command.args:
+        await message.reply("❌ Укажите текст для рассылки")
+        return
+    
+    all_chats = db.get_all_chats()
+    if not all_chats:
+        await message.reply("❌ Бот не добавлен ни в один чат")
+        return
+    
+    success = 0
+    fail = 0
+    for chat_id in all_chats:
+        try:
+            await bot.send_message(int(chat_id), command.args, parse_mode=ParseMode.HTML)
+            success += 1
+            await asyncio.sleep(0.1)
+        except:
+            fail += 1
+    
+    await message.reply(f"📊 Рассылка завершена\n✅ Успешно: {success}\n❌ Ошибок: {fail}")
 
 # ================== ОСНОВНЫЕ КОМАНДЫ ==================
 
@@ -1568,7 +1665,7 @@ async def handle_banned_words(message: Message, found_words: List[str]):
 async def handle_new_members(message: Message):
     for new_member in message.new_chat_members:
         if not new_member.is_bot:
-            db.save_join_event(str(message.chat.id), str(new_member.id), new_member.full_name, datetime.now().timestamp())
+            await save_join_event(message.chat.id, new_member.id, new_member.full_name)
             logger.info(f"Новый участник: {new_member.full_name}")
 
 @dp.message(F.chat.type.in_({"group", "supergroup"}))
@@ -1728,7 +1825,6 @@ async def handle_user_achievements_callback(callback: CallbackQuery):
 # ================== ЗАПУСК ==================
 
 async def main():
-    load_dotenv()
     asyncio.create_task(cleanup_old_data())
     asyncio.create_task(connection_monitor())
     
